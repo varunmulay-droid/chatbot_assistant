@@ -2,12 +2,12 @@ services:
   - type: web
     name: chatbot-assistant
     env: python
-    repo: https://github.com/your-username/chatbot-assistant
+    repo: https://github.com/varunmulay-droid/chatbot-assistant
     branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: python backend.py
     plan: free
     envVars:
       - key: OPENROUTER_API_KEY
-        value: your_openrouter_api_key_here
+        value: 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
     autoDeploy: true
