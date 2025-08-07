@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: chatbot-assistant
+    env: python
+    repo: https://github.com/your-username/chatbot-assistant
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend.py
+    plan: free
+    envVars:
+      - key: OPENROUTER_API_KEY
+        value: your_openrouter_api_key_here
+    autoDeploy: true
