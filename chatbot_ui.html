@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>ERP Chatbot</title>
+    <style>
+        #chat-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999;
+            width: 60px;
+            height: 60px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            border: none;
+            cursor: move;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        #chat-button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        #chat-button.dragging {
+            cursor: grabbing;
+            transform: scale(1.1);
+            box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        #chat-button.clicked {
+            animation: popClick 0.3s ease-out;
+        }
+
+        @keyframes popClick {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1.05);
+            }
+        }
+
+        #chat-popup {
+            display: none;
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 350px;
+            height: 400px;
+            background-color: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            z-index: 9998;
+            box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #chat-popup.show {
+            animation: popIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        #chat-popup.hide {
+            animation: popOut 0.3s ease-in;
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(50px);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05) translateY(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes popOut {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+        }
+
+        #chat-header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            user-select: none;
+        }
+
+        #chat-header:hover {
+            background-color: #45a049;
+        }
+
+        #chat-header.dragging {
+            cursor: grabbing;
+            background-color: #3d8b40;
+        }
+
+        #close-chat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        #close-chat:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        #chatbox {
+            height: 280px;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            max-width: 80%;
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            background-color: #4CAF50;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot-message {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        #chat-input {
+            display: flex;
+            border-top: 1px solid #ccc;
+            background-color: white;
+        }
+
+        #chat-input input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+        }
+
+        #chat-input button {
+            padding: 15px 20px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        #chat-input button:hover {
+            background-color: #45a049;
+        }
+
+        #chat-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .drag-indicator {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Floating Chat Button -->
+    <button id="chat-button" type="button">💬</button>
+
+    <!-- Floating Chat Box -->
+    <div id="chat-popup">
+        <div id="chat-header">
+            <div class="drag-indicator"></div>
+            ERP Assistant
+            <button id="close-chat" type="button">×</button>
+        </div>
+        <div id="chatbox">
+            <div class="message bot-message">
+                Hello! I'm your ERP assistant. How can I help you today?
+            </div>
+        </div>
+        <div id="chat-input">
+            <input id="userInput" type="text" placeholder="Type your message here...">
+            <button type="button" id="send-button">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const chatButton = document.getElementById("chat-button");
+        const chatPopup = document.getElementById("chat-popup");
+        const chatHeader = document.getElementById("chat-header");
+        const closeChat = document.getElementById("close-chat");
+        const sendButton = document.getElementById("send-button");
+        const userInput = document.getElementById("userInput");
+
+        // Chat functionality
+        chatButton.addEventListener('click', (e) => {
+            if (!buttonDragStarted) {
+                // Add click animation to button
+                chatButton.classList.add('clicked');
+                setTimeout(() => {
+                    chatButton.classList.remove('clicked');
+                }, 300);
+                
+                toggleChat();
+            }
+        });
+
+        closeChat.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hideChatWithAnimation();
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        function toggleChat() {
+            if (chatPopup.style.display === 'none' || chatPopup.style.display === '') {
+                showChat();
+            } else {
+                hideChatWithAnimation();
+            }
+        }
+
+        function showChat() {
+            chatPopup.style.display = 'block';
+            chatPopup.classList.remove('hide');
+            chatPopup.classList.add('show');
+            userInput.focus();
+        }
+
+        function hideChatWithAnimation() {
+            chatPopup.classList.remove('show');
+            chatPopup.classList.add('hide');
+            setTimeout(() => {
+                chatPopup.style.display = 'none';
+                chatPopup.classList.remove('hide');
+            }, 300);
+        }
+
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+
+            const chatbox = document.getElementById("chatbox");
+            
+            // Add user message
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            userMessageDiv.textContent = userMessage;
+            chatbox.appendChild(userMessageDiv);
+
+            // Clear input and disable send button
+            userInput.value = "";
+            sendButton.disabled = true;
+            sendButton.textContent = "...";
+
+            // Scroll to bottom
+            chatbox.scrollTop = chatbox.scrollHeight;
+
+            try {
+                const res = await fetch("http://localhost:8000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userMessage })
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                // Add bot response
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.className = 'message bot-message';
+                botMessageDiv.textContent = data.response || "I'm sorry, I didn't understand that.";
+                chatbox.appendChild(botMessageDiv);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                // Add error message
+                const errorMessageDiv = document.createElement('div');
+                errorMessageDiv.className = 'message bot-message';
+                errorMessageDiv.textContent = "Sorry, I'm having trouble connecting to the server. Please try again later.";
+                chatbox.appendChild(errorMessageDiv);
+            } finally {
+                // Re-enable send button
+                sendButton.disabled = false;
+                sendButton.textContent = "➤";
+                
+                // Scroll to bottom
+                chatbox.scrollTop = chatbox.scrollHeight;
+                
+                // Focus back on input
+                userInput.focus();
+            }
+        }
+
+        // Chat Button Dragging
+        let buttonIsDragging = false;
+        let buttonDragStarted = false;
+        let buttonOffsetX = 0;
+        let buttonOffsetY = 0;
+        let buttonStartX = 0;
+        let buttonStartY = 0;
+
+        // Chat Popup Dragging
+        let popupIsDragging = false;
+        let popupDragStarted = false;
+        let popupOffsetX = 0;
+        let popupOffsetY = 0;
+        let popupStartX = 0;
+        let popupStartY = 0;
+
+        // Button drag events
+        chatButton.addEventListener('mousedown', startButtonDrag);
+        document.addEventListener('mousemove', dragButton);
+        document.addEventListener('mouseup', endButtonDrag);
+
+        // Popup drag events
+        chatHeader.addEventListener('mousedown', startPopupDrag);
+        document.addEventListener('mousemove', dragPopup);
+        document.addEventListener('mouseup', endPopupDrag);
+
+        function startButtonDrag(e) {
+            buttonIsDragging = true;
+            buttonDragStarted = false;
+            
+            const rect = chatButton.getBoundingClientRect();
+            buttonOffsetX = e.clientX - rect.left;
+            buttonOffsetY = e.clientY - rect.top;
+            buttonStartX = e.clientX;
+            buttonStartY = e.clientY;
+            
+            chatButton.style.transition = 'none';
+            e.preventDefault();
+        }
+
+        function dragButton(e) {
+            if (!buttonIsDragging) return;
+            
+            const moveDistance = Math.abs(e.clientX - buttonStartX) + Math.abs(e.clientY - buttonStartY);
+            
+            if (moveDistance > 5 && !buttonDragStarted) {
+                buttonDragStarted = true;
+                chatButton.classList.add('dragging');
+            }
+            
+            if (buttonDragStarted) {
+                const newX = e.clientX - buttonOffsetX;
+                const newY = e.clientY - buttonOffsetY;
+                
+                const maxX = window.innerWidth - chatButton.offsetWidth;
+                const maxY = window.innerHeight - chatButton.offsetHeight;
+                
+                const boundedX = Math.max(0, Math.min(newX, maxX));
+                const boundedY = Math.max(0, Math.min(newY, maxY));
+                
+                chatButton.style.left = `${boundedX}px`;
+                chatButton.style.top = `${boundedY}px`;
+                chatButton.style.bottom = 'auto';
+                chatButton.style.right = 'auto';
+            }
+            
+            e.preventDefault();
+        }
+
+        function endButtonDrag() {
+            if (buttonIsDragging) {
+                buttonIsDragging = false;
+                chatButton.style.transition = 'all 0.2s ease';
+                
+                setTimeout(() => {
+                    chatButton.classList.remove('dragging');
+                    setTimeout(() => {
+                        buttonDragStarted = false;
+                    }, 200);
+                }, 100);
+            }
+        }
+
+        function startPopupDrag(e) {
+            if (e.target === closeChat) return;
+            
+            popupIsDragging = true;
+            popupDragStarted = false;
+            
+            const rect = chatPopup.getBoundingClientRect();
+            popupOffsetX = e.clientX - rect.left;
+            popupOffsetY = e.clientY - rect.top;
+            popupStartX = e.clientX;
+            popupStartY = e.clientY;
+            
+            chatPopup.style.transition = 'none';
+            e.preventDefault();
+        }
+
+        function dragPopup(e) {
+            if (!popupIsDragging) return;
+            
+            const moveDistance = Math.abs(e.clientX - popupStartX) + Math.abs(e.clientY - popupStartY);
+            
+            if (moveDistance > 5 && !popupDragStarted) {
+                popupDragStarted = true;
+                chatHeader.classList.add('dragging');
+            }
+            
+            if (popupDragStarted) {
+                const newX = e.clientX - popupOffsetX;
+                const newY = e.clientY - popupOffsetY;
+                
+                const maxX = window.innerWidth - chatPopup.offsetWidth;
+                const maxY = window.innerHeight - chatPopup.offsetHeight;
+                
+                const boundedX = Math.max(0, Math.min(newX, maxX));
+                const boundedY = Math.max(0, Math.min(newY, maxY));
+                
+                chatPopup.style.left = `${boundedX}px`;
+                chatPopup.style.top = `${boundedY}px`;
+                chatPopup.style.bottom = 'auto';
+                chatPopup.style.right = 'auto';
+            }
+            
+            e.preventDefault();
+        }
+
+        function endPopupDrag() {
+            if (popupIsDragging) {
+                popupIsDragging = false;
+                chatPopup.style.transition = 'all 0.2s ease';
+                chatHeader.classList.remove('dragging');
+                
+                setTimeout(() => {
+                    popupDragStarted = false;
+                }, 200);
+            }
+        }
+
+        // Handle Enter key in input field
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !sendButton.disabled) {
+                sendMessage();
+            }
+        });
+
+        // Prevent text selection while dragging
+        document.addEventListener('selectstart', function(e) {
+            if (buttonIsDragging || popupIsDragging) {
+                e.preventDefault();
+            }
+        });
+
+        // Close chat when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!chatPopup.contains(e.target) && !chatButton.contains(e.target)) {
+                if (chatPopup.style.display === 'block' && !popupDragStarted) {
+                    hideChatWithAnimation();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
